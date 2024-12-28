@@ -24,10 +24,10 @@ class OBJECT_OT_separate_by_vertex_color(bpy.types.Operator):
             return {'CANCELLED'}
 
         # If "Merge by Distance" is enabled, run the merge operation
-        if context.scene.merge_by_distance:  # Access scene property from SWToolkit
+        if context.scene.merge_by_distance:
             bpy.ops.object.mode_set(mode='EDIT')  # Switch to edit mode
             bpy.ops.mesh.select_all(action='SELECT')  # Select all vertices
-            threshold = context.scene.merge_distance_threshold  # Access scene property
+            threshold = context.scene.merge_distance_threshold
             bpy.ops.mesh.remove_doubles(threshold=threshold)  # Correct operator for Blender 3.6
             bpy.ops.object.mode_set(mode='OBJECT')  # Switch back to object mode
             self.report({'INFO'}, f"Merged vertices by distance ({threshold})")
@@ -131,7 +131,7 @@ class OBJECT_OT_separate_by_vertex_color(bpy.types.Operator):
             new_obj.data.materials.append(mat)
 
             # If Limited Dissolve is enabled, apply it to the new object
-            if context.scene.limited_dissolve:  # Access scene property from SWToolkit
+            if context.scene.limited_dissolve:
                 bpy.context.view_layer.objects.active = new_obj  # Set the new object as active
                 bpy.ops.object.mode_set(mode='EDIT')  # Switch to edit mode
                 bpy.ops.mesh.select_all(action='SELECT')  # Select all vertices
@@ -141,7 +141,7 @@ class OBJECT_OT_separate_by_vertex_color(bpy.types.Operator):
                 self.report({'INFO'}, f"Applied Limited Dissolve with {context.scene.limited_dissolve_degrees} degrees to {new_obj.name}")
 
         # Triangulate all created objects if the triangulate option is enabled
-        if context.scene.triangulate:  # Access scene property from SWToolkit
+        if context.scene.triangulate:
             for new_obj in created_objects:
                 bpy.context.view_layer.objects.active = new_obj  # Set the new object as active
                 bpy.ops.object.mode_set(mode='EDIT')  # Switch to edit mode
@@ -151,7 +151,7 @@ class OBJECT_OT_separate_by_vertex_color(bpy.types.Operator):
                 self.report({'INFO'}, f"Triangulated {new_obj.name}")
 
         # Split faces by edges if Edge Split option is enabled
-        if bpy.context.scene.edge_split:  # Access scene property from SWToolkit
+        if bpy.context.scene.edge_split:
             for new_obj in created_objects:
                 # Ensure we're in object mode
                 bpy.context.view_layer.objects.active = new_obj
@@ -188,7 +188,7 @@ class OBJECT_OT_separate_by_vertex_color(bpy.types.Operator):
         obj.hide_render = True  # Hide in render
 
         # Check if join option is enabled
-        if context.scene.join_objects:  # Access scene property from SWToolkit
+        if context.scene.join_objects:
             self.report({'INFO'}, "Joining separated objects...")
             bpy.ops.object.select_all(action='DESELECT')
             for new_obj in created_objects:
@@ -209,35 +209,39 @@ class VIEW3D_PT_separate_by_vertex_color_panel(bpy.types.Panel):
     bl_idname = "VIEW3D_PT_separate_by_vertex_color"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = 'Tool'
+    bl_category = 'SW Toolkit'  # Now placed under SW Toolkit tab
 
     def draw(self, context):
         layout = self.layout
         scene = context.scene
 
-        # Operator Button
-        layout.operator(OBJECT_OT_separate_by_vertex_color.bl_idname)
+        # Create a larger box to encase all the sections
+        main_box = layout.box()  # This will be the outer box containing everything
+
+        # Operator Button inside a Box
+        button_box = main_box.box()  # Create a smaller box for the button inside the larger one
+        button_box.operator(OBJECT_OT_separate_by_vertex_color.bl_idname)  # Add the operator button inside the box
 
         # Merge Options
-        box = layout.box()
-        box.label(text="Merge Options")
-        box.prop(scene, "merge_by_distance", text="Merge by Distance")
+        merge_box = main_box.box()  # Create a smaller box for Merge Options
+        merge_box.label(text="Merge Options")
+        merge_box.prop(scene, "merge_by_distance", text="Merge by Distance")
         if scene.merge_by_distance:
-            box.prop(scene, "merge_distance_threshold", text="Merge Threshold")
+            merge_box.prop(scene, "merge_distance_threshold", text="Merge Threshold")
 
         # Limited Dissolve Options
-        box = layout.box()
-        box.label(text="Limited Dissolve Options")
-        box.prop(scene, "limited_dissolve", text="Limited Dissolve")
+        dissolve_box = main_box.box()  # Create a smaller box for Limited Dissolve Options
+        dissolve_box.label(text="Limited Dissolve Options")
+        dissolve_box.prop(scene, "limited_dissolve", text="Limited Dissolve")
         if scene.limited_dissolve:
-            box.prop(scene, "limited_dissolve_degrees", text="Dissolve Degrees")
+            dissolve_box.prop(scene, "limited_dissolve_degrees", text="Dissolve Degrees")
 
         # Triangulation & Edge Split Options
-        box = layout.box()
-        box.label(text="Post-Processing Options")
-        box.prop(scene, "triangulate", text="Triangulate")
-        box.prop(scene, "edge_split", text="Edge Split")
-        box.prop(scene, "join_objects", text="Join Objects")
+        post_process_box = main_box.box()  # Create a smaller box for Post-Processing Options
+        post_process_box.label(text="Post-Processing Options")
+        post_process_box.prop(scene, "triangulate", text="Triangulate")
+        post_process_box.prop(scene, "edge_split", text="Edge Split")
+        post_process_box.prop(scene, "join_objects", text="Join Objects")
 
 # Add properties to the scene
 def add_scene_properties():
@@ -261,11 +265,13 @@ def remove_scene_properties():
 
 # Register and Unregister Functions
 def register():
+    # Register both panels and properties
     bpy.utils.register_class(OBJECT_OT_separate_by_vertex_color)
     bpy.utils.register_class(VIEW3D_PT_separate_by_vertex_color_panel)
     add_scene_properties()
 
 def unregister():
+    # Unregister both panels and properties
     bpy.utils.unregister_class(OBJECT_OT_separate_by_vertex_color)
     bpy.utils.unregister_class(VIEW3D_PT_separate_by_vertex_color_panel)
     remove_scene_properties()
