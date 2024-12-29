@@ -1,9 +1,9 @@
 import bpy
 import bmesh
 
-from bpy.types import Panel
-from bpy.utils import register_class
-import textwrap
+from .interfaceManager import _label_multiline
+
+
 
 # Operator for splitting edges and setting vertex colors
 class OBJECT_OT_split_edges_and_set_colors(bpy.types.Operator):
@@ -108,39 +108,6 @@ class OBJECT_OT_vertex_color_to_materials(bpy.types.Operator):
             self.report({'ERROR'}, "No active mesh object found.")
             return {'CANCELLED'}
 
-
-# Dynamic multiline converter for text because for whatever reason Blender doesnt natively support this.
-def _label_multiline(context, text, parent):
-    # Calculate the number of characters that fit into the panel width
-    chars = int(context.region.width / 14) 
-    wrapper = textwrap.TextWrapper(width=chars, break_long_words=True, expand_tabs=False)
-
-    # Wrap the text into lines that fit the width
-    text_lines = wrapper.wrap(text=text)
-
-    # Add each line to the panel as a label
-    for text_line in text_lines:
-        parent.label(text=text_line)  # Add the line as a label
-
-# Panel class for the 3D view
-class TEST_PT_private(Panel):
-    bl_idname = 'TEST_PT_test'
-    bl_label = 'MULTILINE TEXT'
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = 'TEST'
-
-    def draw(self, context):
-        layout = self.layout
-        # Call function to split and display the multiline text
-        _label_multiline(
-            context=context,
-            text=text,
-            parent=layout
-        )
-
-register_class(TEST_PT_private)
-
 # Panel for SW Toolkit
 class SWToolkitSplitPanel(bpy.types.Panel):
     bl_label = "Color Type Converter"
@@ -157,22 +124,18 @@ class SWToolkitSplitPanel(bpy.types.Panel):
         col.prop(context.scene, "tool_info_expand", text="", icon="INFO")
         
         if context.scene.tool_info_expand:
-            box = layout.box()  # Creates a box with some padding
-            text = '''The Color Converting Tool converts materials to vertex colors and vice versa. When converting from material to vertex color, edges are automatically split to prevent colors from becoming gradients.''' 
-            
-            # Ensure box has enough space for text
-            box.scale_y = 1.0  # Increase the box height if needed
+            # Creates a box with some padding for multiline text
+            box = col.box()  # We use 'col' here instead of 'layout'
+            description_text = '''The Color Converting Tool allows you to convert materials to vertex colors and vice versa. When converting from material to vertex color, edges are automatically split to prevent vertex colors from becoming gradients.'''
 
-            # Replace the label with multiline text
-            _label_multiline(context=context, text=text, parent=box)
+            # Call the _label_multiline function to handle the dynamic wrapping of the text
+            _label_multiline(context=context, text=description_text, parent=box)
 
         # Buttons inside nested boxes
         outer_box = layout.box()  # Outer box
         inner_box = outer_box.box()  # Inner box
         inner_box.operator("object.split_edges_and_set_colors", text="Materials to Vertex Color")
         inner_box.operator("object.vertex_color_to_materials", text="Vertex Colors to Materials")
-
-
 
 # Register and unregister functions
 def register():

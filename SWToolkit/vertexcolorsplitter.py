@@ -1,6 +1,8 @@
 import bpy
 import bmesh
 
+from .interfaceManager import _label_multiline
+
 bl_info = {
     "name": "Separate by Vertex Color",
     "blender": (3, 6, 0),
@@ -215,6 +217,18 @@ class VIEW3D_PT_separate_by_vertex_color_panel(bpy.types.Panel):
         layout = self.layout
         scene = context.scene
 
+        # Collapsible area with tool info
+        col = layout.column()
+        col.prop(context.scene, "tool_info_expand_vcs", text="", icon="INFO")
+        
+        if context.scene.tool_info_expand_vcs:
+            # Creates a box with some padding for multiline text
+            box = col.box()  # We use 'col' here instead of 'layout'
+            description_text = '''Separate by Vertex Color splits a mesh into objects based on vertex colors, with options for merging, dissolving, triangulating, and splitting edges.'''
+
+            # Call the _label_multiline function to handle the dynamic wrapping of the text
+            _label_multiline(context=context, text=description_text, parent=box)
+
         # Create a larger box to encase all the sections
         main_box = layout.box()  # This will be the outer box containing everything
 
@@ -252,6 +266,8 @@ def add_scene_properties():
     bpy.types.Scene.triangulate = bpy.props.BoolProperty(name="Triangulate", default=False)
     bpy.types.Scene.edge_split = bpy.props.BoolProperty(name="Edge Split", default=False)
     bpy.types.Scene.join_objects = bpy.props.BoolProperty(name="Join Objects", default=False)
+    bpy.types.Scene.tool_info_expand_vcs = bpy.props.BoolProperty(name="Tool Info Expand VCS", default=False)
+
 
 # Remove properties from the scene
 def remove_scene_properties():
@@ -262,6 +278,8 @@ def remove_scene_properties():
     del bpy.types.Scene.triangulate
     del bpy.types.Scene.edge_split
     del bpy.types.Scene.join_objects
+    del bpy.types.Scene.tool_info_expand_vcs
+
 
 # Register and Unregister Functions
 def register():

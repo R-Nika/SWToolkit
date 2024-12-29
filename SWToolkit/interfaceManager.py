@@ -1,5 +1,25 @@
 import bpy
+from bpy.types import Panel
+from bpy.utils import register_class
+from bpy.utils import unregister_class
 
+import textwrap
+
+# Function to handle dynamic multiline text
+def _label_multiline(context, text, parent):
+    # Calculate the number of characters that fit into the panel width
+    chars = int(context.region.width / 14)
+    wrapper = textwrap.TextWrapper(width=chars, break_long_words=True, expand_tabs=False)
+
+    # Wrap the text into lines that fit the width
+    text_lines = wrapper.wrap(text=text)
+
+    # Add each line to the panel as a label
+    for text_line in text_lines:
+        parent.label(text=text_line)  # Add the line as a label
+
+
+# The main SWToolkitPanel class
 class SWToolkitPanel(bpy.types.Panel):
     bl_label = "SW Toolkit"  # Tab title
     bl_idname = "VIEW3D_PT_sw_toolkit"  # Unique identifier for the panel
@@ -22,12 +42,13 @@ class SWToolkitPanel(bpy.types.Panel):
         links_box.operator("wm.url_open", text="Visit GitHub").url = "https://github.com/R-Nika/SWToolkit"
         links_box.operator("wm.url_open", text="Join the SMF Discord").url = "https://discord.gg/mFY8Wuk"
 
+
 # Register and unregister functions
 def register():
-    bpy.utils.register_class(SWToolkitPanel)
+    register_class(SWToolkitPanel)
 
 def unregister():
-    bpy.utils.unregister_class(SWToolkitPanel)
+    unregister_class(SWToolkitPanel)
 
 if __name__ == "__main__":
     register()
