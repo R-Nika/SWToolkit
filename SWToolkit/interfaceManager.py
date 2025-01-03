@@ -35,7 +35,7 @@ class SWToolkitPanel(bpy.types.Panel):
 
         # Version Section inside a box
         version_box = main_box.box()  # Create a box for the version section
-        version_box.label(text="Version: 0.1.0", icon='FILE_TICK')  # Version with icon
+        version_box.label(text="Version: 1.0.0", icon='FILE_TICK')  # Version with icon
         version_box.label(text="In Development", icon='PREFERENCES')  # In Development label with icon
 
         # GitHub and Discord links inside their own box
