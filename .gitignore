@@ -3,3 +3,7 @@ SWtoolkit.blend
 toolkittestground.blend1
 toolkittestground.blend
 test.blend
+SWToolkit/vertexcolorsplitter.py
+SWToolkit/matToVert.py
+SWToolkit/interfaceManager.py
+SWToolkit/__init__.py
