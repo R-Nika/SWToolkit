@@ -32,5 +32,5 @@ The **SW Toolkit** is a Blender addon designed for Stormworks modding.
 ## Suggestions
 If you have any features you'd like to see added or run into any issues, feel free to reach out in the [**SMF Discord**](https://discord.gg/mFY8Wuk). My username is **Nika**.
 
-And if you enjoy my work and want to support me, feel free to [buy me a coffee](buymeacoffee.com/nika_cheese) 😊
+And if you enjoy my work and want to support me, feel free to [buy me a coffee](http://www.buymeacoffee.com/nika_cheese) 😊
 
