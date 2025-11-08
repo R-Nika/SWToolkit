@@ -1,4 +1,4 @@
-# SW Toolkit Addon for Blender v3.6 LTS
+# SW Toolkit Addon for Blender v4.5.x LTS
 
 ## Overview
 The **SW Toolkit** is a Blender addon designed for Stormworks modding. 
