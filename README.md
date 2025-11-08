@@ -19,7 +19,7 @@ The **SW Toolkit** is a Blender addon designed for Stormworks modding.
   - **Material to Vertex Color**: Automatically splits edges to prevent gradients in vertex colors.  
   - **Vertex Color to Material**: Efficiently create materials based on vertex color data.
 
-<img src="https://github.com/user-attachments/assets/efd167b1-3e0e-4cb9-8087-0e107fa3c1b8" alt="Feature Preview" width="200">
+<img width="236" height="559" alt="image" src="https://github.com/user-attachments/assets/ad783d5b-76f1-4466-9fc3-5b4d9a71428e" />
 
 ## Installation
 1. Download **SWToolkit.zip**.
