@@ -7,6 +7,8 @@ from .interfaceManager import _label_multiline
 class OBJECT_OT_split_edges_and_set_colors(bpy.types.Operator):
     bl_idname = "object.split_edges_and_set_colors"
     bl_label = "Split Edges and Set Vertex Colors"
+    bl_description = "Convert materials to vertex colors and split edges to prevent color gradient"
+    bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         obj = bpy.context.active_object
@@ -75,6 +77,8 @@ class OBJECT_OT_split_edges_and_set_colors(bpy.types.Operator):
 class OBJECT_OT_vertex_color_to_materials(bpy.types.Operator):
     bl_idname = "object.vertex_color_to_materials"
     bl_label = "Vertex Colors to Materials"
+    bl_description = "Convert vertex colors back to materials"
+    bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         obj = bpy.context.active_object
@@ -85,6 +89,11 @@ class OBJECT_OT_vertex_color_to_materials(bpy.types.Operator):
             if "Col" not in obj.data.attributes:
                 self.report({'ERROR'}, f"Object '{obj.name}' has no vertex color attribute named 'Col'")
                 return {'CANCELLED'}
+
+            # Remove custom normals if enabled
+            if context.scene.remove_custom_normals and "custom_normal" in obj.data.attributes:
+                obj.data.attributes.remove(obj.data.attributes["custom_normal"])
+                self.report({'INFO'}, "Removed custom normals for accurate material preview")
 
             color_attribute = obj.data.attributes["Col"]
             unique_colors = {}
@@ -119,7 +128,12 @@ class OBJECT_OT_vertex_color_to_materials(bpy.types.Operator):
                     # Convert to 0-255 for RGB naming, with rounding to handle floating point precision
                     r, g, b = [round(c * 255) for c in srgb_color]
                     hex_color = f"#{r:02X}{g:02X}{b:02X}"
-                    mat_name = f"{hex_color} ({r},{g},{b})"
+                    
+                    # Auto name glass functionality
+                    if context.scene.auto_name_glass and hex_color.upper() == "#A0A0C7":
+                        mat_name = "MATERIALglass"
+                    else:
+                        mat_name = f"{hex_color} ({r},{g},{b})"
 
                     print(f"Creating material: {mat_name} (from linear {clamped_color} to sRGB {srgb_color})")
 
@@ -149,26 +163,6 @@ class OBJECT_OT_vertex_color_to_materials(bpy.types.Operator):
             self.report({'ERROR'}, "No active mesh object found.")
             return {'CANCELLED'}
 
-def draw_info_section(self, context, layout):
-    scene = context.scene
-
-    # Expand/collapse row
-    row = layout.row(align=True)
-    icon = 'TRIA_DOWN' if scene.tool_info_expand else 'TRIA_RIGHT'
-    row.prop(scene, "tool_info_expand", text="", icon=icon, emboss=False)
-    row.label(text="Tool Information")
-
-    if scene.tool_info_expand:
-        box = layout.box()  # dark framed container
-        description_text = (
-            "The Color Converting Tool allows you to convert materials "
-            "to vertex colors and vice versa.\n\n"
-            "When converting from material to vertex color, edges are automatically "
-            "split to prevent gradients from appearing in vertex colors."
-        )
-        # Pass the box as the parent so the text is inside the dark box
-        _label_multiline(context=context, text=description_text, parent=box)
-
 # Panel for SW Toolkit
 class SWToolkitSplitPanel(bpy.types.Panel):
     bl_label = "Color Type Converter"
@@ -180,13 +174,25 @@ class SWToolkitSplitPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
 
-        draw_info_section(self, context, layout)
-
-        # Buttons inside nested boxes
-        outer_box = layout.box()  # Outer box
-        inner_box = outer_box.box()  # Inner box
+        # Main outer box
+        outer_box = layout.box()
+        
+        # Buttons inside inner box
+        inner_box = outer_box.box()
         inner_box.operator("object.split_edges_and_set_colors", text="Materials to Vertex Color")
         inner_box.operator("object.vertex_color_to_materials", text="Vertex Colors to Materials")
+        
+        # Settings collapsible area INSIDE the outer box
+        settings_box = outer_box.box()
+        row = settings_box.row()
+        icon = "TRIA_DOWN" if context.scene.settings_color_type_converter else "TRIA_RIGHT"
+        row.prop(context.scene, "settings_color_type_converter", text="", icon=icon, emboss=False)
+        row.label(text="Settings")
+
+        if context.scene.settings_color_type_converter:
+            nested_box = settings_box.box()
+            nested_box.prop(context.scene, "remove_custom_normals", text="Remove Custom Normals")
+            nested_box.prop(context.scene, "auto_name_glass", text="Auto Name Glass")
 
 # Register and unregister functions
 def register():
@@ -194,10 +200,20 @@ def register():
     bpy.utils.register_class(OBJECT_OT_vertex_color_to_materials)
     bpy.utils.register_class(SWToolkitSplitPanel)
 
-    # Add a custom property to toggle the collapsible area
-    bpy.types.Scene.tool_info_expand = bpy.props.BoolProperty(
-        name="Expand Tool Info",
-        description="Toggle tool info visibility",
+    # Add custom properties
+    bpy.types.Scene.settings_color_type_converter = bpy.props.BoolProperty(
+        name="Show Tool Settings",
+        description="Expand or collapse settings for separation",
+        default=False
+    )
+    bpy.types.Scene.remove_custom_normals = bpy.props.BoolProperty(
+        name="Remove Custom Normals",
+        description="Remove custom normals for accurate material preview during conversion",
+        default=True
+    )
+    bpy.types.Scene.auto_name_glass = bpy.props.BoolProperty(
+        name="Auto Name Glass",
+        description="Name materials with hex color #A0A0C7 as 'MATERIALglass'",
         default=False
     )
 
@@ -205,9 +221,11 @@ def unregister():
     bpy.utils.unregister_class(OBJECT_OT_split_edges_and_set_colors)
     bpy.utils.unregister_class(OBJECT_OT_vertex_color_to_materials)
     bpy.utils.unregister_class(SWToolkitSplitPanel)
-
-    # Remove the custom property
-    del bpy.types.Scene.tool_info_expand
+    
+    # Remove custom properties
+    del bpy.types.Scene.settings_color_type_converter
+    del bpy.types.Scene.remove_custom_normals
+    del bpy.types.Scene.auto_name_glass
 
 if __name__ == "__main__":
     register()

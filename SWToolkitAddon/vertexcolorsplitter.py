@@ -20,6 +20,7 @@ def rgb_to_hex(color):
 class OBJECT_OT_separate_by_vertex_color(bpy.types.Operator):
     bl_idname = "object.separate_by_vertex_color"
     bl_label = "Separate by Vertex Color"
+    bl_description = "Separate mesh into multiple objects based on vertex colors"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
@@ -54,20 +55,30 @@ class OBJECT_OT_separate_by_vertex_color(bpy.types.Operator):
                 idx = loop.vert.index
                 return color_attr.data[idx].color[:3]
 
-        # Group faces by average color
+        # Group faces by average color AND their original material indices
         color_faces = {}
         for face in bm.faces:
             colors = [get_loop_color(loop) for loop in face.loops]
             avg_color = tuple(round(sum(c[i] for c in colors) / len(colors), 3) for i in range(3))
-            color_faces.setdefault(avg_color, []).append(face)
+            
+            # Store both the faces and their original material indices
+            if avg_color not in color_faces:
+                color_faces[avg_color] = {'faces': [], 'material_indices': []}
+            color_faces[avg_color]['faces'].append(face)
+            color_faces[avg_color]['material_indices'].append(face.material_index)
 
         created_objects = []
-        
-        # Dictionary to store materials we've already created
-        material_cache = {}
+
+        # Check if original object has materials
+        original_has_materials = len(obj.data.materials) > 0
+
+        transfer_warning_shown = False  
 
         # Create new objects per color
-        for color, faces in color_faces.items():
+        for color, data in color_faces.items():
+            faces = data['faces']
+            material_indices = data['material_indices']
+            
             hex_color = rgb_to_hex(color)
             name_rgb = f"{int(color[0]*255)},{int(color[1]*255)},{int(color[2]*255)}"
             obj_name = f"{obj.name} | {hex_color} | {name_rgb}"
@@ -81,8 +92,9 @@ class OBJECT_OT_separate_by_vertex_color(bpy.types.Operator):
             bm_new = bmesh.new()
             vert_map = {}  # Maps original BMesh verts to new BMesh verts
             loop_colors = []
+            new_face_material_indices = []  # Store material index for each new face
 
-            for face in faces:
+            for i, face in enumerate(faces):
                 verts = []
                 face_colors = []
                 for loop in face.loops:
@@ -92,7 +104,9 @@ class OBJECT_OT_separate_by_vertex_color(bpy.types.Operator):
                     verts.append(vert_map[v])
                     face_colors.append(get_loop_color(loop))
                 try:
-                    bm_new.faces.new(verts)
+                    new_face = bm_new.faces.new(verts)
+                    # Store the material index for this new face
+                    new_face_material_indices.append(material_indices[i])
                 except ValueError:
                     pass
                 loop_colors.extend([(*c, 1.0) for c in face_colors])
@@ -128,12 +142,10 @@ class OBJECT_OT_separate_by_vertex_color(bpy.types.Operator):
                         vert_color_counts[orig_vert] += 1
                 
                 # Average the colors for each original vertex and assign to new mesh vertices
-                # We need to iterate through the new mesh's vertices and find their corresponding original vertices
                 bm_temp = bmesh.new()
                 bm_temp.from_mesh(new_mesh)
                 
-                # Create a mapping from position to original vertex (since we can't store custom data in BMesh verts)
-                # This is a bit hacky but should work for most cases
+                # Create a mapping from position to original vertex
                 position_to_color = {}
                 for orig_vert, color_sum in vert_colors.items():
                     count = vert_color_counts[orig_vert]
@@ -158,43 +170,52 @@ class OBJECT_OT_separate_by_vertex_color(bpy.types.Operator):
                 
                 bm_temp.free()
 
-            # Vertex color material - REUSE EXISTING MATERIALS (matching the other script's naming)
-            material_name = f"#{hex_color} ({name_rgb})"
-
-            # Check if we've already created this material in this session
-            if material_name in material_cache:
-                mat = material_cache[material_name]
-            else:
-                # Check if material already exists in the blend file
-                if material_name in bpy.data.materials:
-                    mat = bpy.data.materials[material_name]
-                else:
-                    # Create new material with GAMMA CORRECTION to fix brightness
-                    mat = bpy.data.materials.new(name=material_name)
-                    mat.use_nodes = True
-                    nodes = mat.node_tree.nodes
-                    links = mat.node_tree.links
-                    nodes.clear()
-                    
-                    out_node = nodes.new("ShaderNodeOutputMaterial")
-                    bsdf = nodes.new("ShaderNodeBsdfPrincipled")
-                    vc_node = nodes.new("ShaderNodeVertexColor")
-                    vc_node.layer_name = "Col"
-                    
-                    # ADD GAMMA CORRECTION NODE to fix brightness
-                    gamma_node = nodes.new("ShaderNodeGamma")
-                    gamma_node.inputs['Gamma'].default_value = 2.2  # sRGB gamma correction
-                    
-                    # Connect: Vertex Color → Gamma → BSDF
-                    links.new(vc_node.outputs['Color'], gamma_node.inputs['Color'])
-                    links.new(gamma_node.outputs['Color'], bsdf.inputs['Base Color'])
-                    links.new(bsdf.outputs['BSDF'], out_node.inputs['Surface'])
+            # MATERIAL HANDLING: Based on transfer_materials and link_materials settings
+            if original_has_materials and context.scene.transfer_materials:
+                # Get unique material indices used by this specific object's faces
+                used_material_indices = set(new_face_material_indices)
                 
-                # Cache the material for reuse in this operation
-                material_cache[material_name] = mat
-            
-            # Assign material to object
-            new_obj.data.materials.append(mat)
+                if context.scene.link_materials:
+                    # LINK MATERIALS: Share material references, but only add used materials
+                    material_mapping = {}  # Map original index to new index
+                    
+                    for orig_index in used_material_indices:
+                        if orig_index < len(obj.data.materials):
+                            mat = obj.data.materials[orig_index]
+                            new_obj.data.materials.append(mat)
+                            material_mapping[orig_index] = len(new_obj.data.materials) - 1
+                    
+                    # Assign the correct material indices to each face
+                    for poly_index, material_index in enumerate(new_face_material_indices):
+                        if (poly_index < len(new_mesh.polygons) and 
+                            material_index in material_mapping):
+                            new_mesh.polygons[poly_index].material_index = material_mapping[material_index]
+                
+                else:
+                    # DON'T LINK MATERIALS: Create new material copies, only for used materials
+                    material_mapping = {}  # Map original material indices to new material indices
+                    
+                    for orig_index in used_material_indices:
+                        if orig_index < len(obj.data.materials):
+                            original_mat = obj.data.materials[orig_index]
+                            # Create a copy of the material with a new name
+                            new_mat = original_mat.copy()
+                            new_mat.name = f"{original_mat.name} | {hex_color}"
+                            new_obj.data.materials.append(new_mat)
+                            material_mapping[orig_index] = len(new_obj.data.materials) - 1
+                    
+                    # Assign the new material index to the face
+                    for poly_index, material_index in enumerate(new_face_material_indices):
+                        if (poly_index < len(new_mesh.polygons) and 
+                            material_index in material_mapping):
+                            new_mesh.polygons[poly_index].material_index = material_mapping[material_index]
+
+            elif context.scene.transfer_materials and not original_has_materials and not transfer_warning_shown:
+                self.report({'WARNING'}, "Transfer Materials enabled but original model has no materials")
+                transfer_warning_shown = True
+
+            # If transfer_materials is FALSE: No materials on separated objects
+            # Do nothing - object will have no materials
 
         # Hide original
         obj.hide_set(True)
@@ -262,7 +283,11 @@ class VIEW3D_PT_separate_by_vertex_color_panel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
+        
+        # Main outer box
         outer_box = layout.box()
+        
+        # Operator button inside inner box
         inner_box = outer_box.box()
         inner_box.operator(
             OBJECT_OT_separate_by_vertex_color.bl_idname,
@@ -270,24 +295,36 @@ class VIEW3D_PT_separate_by_vertex_color_panel(bpy.types.Panel):
             icon="MESH_CUBE"
         )
 
-        # Settings collapsible area
-        box = layout.box()
-        row = box.row()
+        # Settings collapsible area INSIDE the outer box
+        settings_box = outer_box.box()
+        row = settings_box.row()
         icon = "TRIA_DOWN" if context.scene.show_separate_settings else "TRIA_RIGHT"
         row.prop(context.scene, "show_separate_settings", text="", icon=icon, emboss=False)
         row.label(text="Settings")
 
         if context.scene.show_separate_settings:
-            nested_box = box.box()
+            # Box for Domain settings
+            domain_box = settings_box.box()
+            header_row = domain_box.row()
+            header_row.alignment = 'CENTER'
+            header_row.label(text="Color Settings")
+            domain_box.prop(context.scene, "vertex_color_domain", text="Domain")
+            domain_box.prop(context.scene, "transfer_materials", text="Transfer Materials")
             
-            # Domain dropdown
-            nested_box.prop(context.scene, "vertex_color_domain", text="Domain")
+            # Show Link Materials only if Transfer Materials is enabled
+            if context.scene.transfer_materials:
+                domain_box.prop(context.scene, "link_materials", text="Link Materials")
             
-            nested_box.prop(context.scene, "join_after_separate", text="Join Resulting Objects")
-            nested_box.prop(context.scene, "triangulate_after_separate", text="Triangulate")
-            nested_box.prop(context.scene, "edgesplit_after_separate", text="Edge Split")
-            nested_box.prop(context.scene, "merge_by_distance_after_separate", text="Merge by Distance")
-            nested_box.prop(context.scene, "limited_dissolve_after_separate", text="Limited Dissolve")
+            # Box for Geometry processing settings
+            geometry_box = settings_box.box()
+            header_row = geometry_box.row()
+            header_row.alignment = 'CENTER'
+            header_row.label(text="Geometry Processing")
+            geometry_box.prop(context.scene, "join_after_separate", text="Join Resulting Objects")
+            geometry_box.prop(context.scene, "triangulate_after_separate", text="Triangulate")
+            geometry_box.prop(context.scene, "edgesplit_after_separate", text="Edge Split")
+            geometry_box.prop(context.scene, "merge_by_distance_after_separate", text="Merge by Distance")
+            geometry_box.prop(context.scene, "limited_dissolve_after_separate", text="Limited Dissolve")
 
 
 # Registration
@@ -309,6 +346,16 @@ def register():
             ('POINT', "Point", "Use point domain (per-vertex colors)")
         ],
         default='CORNER'
+    )
+    bpy.types.Scene.transfer_materials = bpy.props.BoolProperty(
+        name="Transfer Materials",
+        description="Copy materials from original to separated objects",
+        default=False
+    )
+    bpy.types.Scene.link_materials = bpy.props.BoolProperty(
+        name="Link Materials",
+        description="Share materials between original and separated objects",
+        default=True
     )
     bpy.types.Scene.join_after_separate = bpy.props.BoolProperty(
         name="Join Resulting Objects",
@@ -336,7 +383,7 @@ def register():
         default=False
     )
     bpy.types.Scene.show_separate_settings = bpy.props.BoolProperty(
-        name="Show Separate Settings",
+        name="Show Tool Settings",
         description="Expand or collapse settings for separation",
         default=False
     )
@@ -347,6 +394,8 @@ def unregister():
         bpy.utils.unregister_class(cls)
 
     del bpy.types.Scene.vertex_color_domain
+    del bpy.types.Scene.transfer_materials
+    del bpy.types.Scene.link_materials
     del bpy.types.Scene.join_after_separate
     del bpy.types.Scene.triangulate_after_separate
     del bpy.types.Scene.edgesplit_after_separate

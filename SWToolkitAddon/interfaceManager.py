@@ -2,6 +2,7 @@ import bpy
 import urllib.request
 import json
 import textwrap
+from . import CURRENT_VERSION
 
 # ------------------------------------------------------------------------
 # Helper: Multiline Label
@@ -16,7 +17,6 @@ def _label_multiline(context, text, parent):
 # ------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------
-CURRENT_VERSION = "0.1.3"
 GITHUB_API_RELEASES_URL = "https://api.github.com/repos/R-Nika/SWToolkit/releases/latest"
 
 # Store update info globally
@@ -72,25 +72,25 @@ class SWToolkitPanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        main_box = layout.box()
+        
+        # Main outer box
+        outer_box = layout.box()
+        
+        # Nested box containing both version text and button
+        inner_box = outer_box.box()
+        version_row = inner_box.row()
+        version_row.label(text=f"[ALPHA] SW Toolkit v{CURRENT_VERSION}", icon='FILE_TICK')
+        inner_box.operator("wm.url_open", text="Join the SMF Discord", icon='URL').url = "https://discord.gg/mFY8Wuk"
 
-        # Version info
-        version_box = main_box.box()
-        version_box.label(text=f"[ALPHA] SW Toolkit v{CURRENT_VERSION}", icon='FILE_TICK')
-
-        # Show warning if update available
+        # Show warning if update available (in a nested box)
         global UPDATE_AVAILABLE, LATEST_VERSION
         if UPDATE_AVAILABLE and LATEST_VERSION:
-            warn_row = version_box.row()
+            warning_box = outer_box.box()
+            warn_row = warning_box.row()
             warn_row.label(text=f"Update available: v{LATEST_VERSION}", icon='ERROR')
-            link_row = version_box.row()
+            link_row = warning_box.row()
             op = link_row.operator("wm.url_open", text="Get Latest on GitHub", icon='URL')
             op.url = "https://github.com/R-Nika/SWToolkit/releases/latest"
-
-        # Links section
-        links_box = main_box.box()
-        links_box.operator("wm.url_open", text="Join the SMF Discord").url = "https://discord.gg/mFY8Wuk"
-
 # ------------------------------------------------------------------------
 # Registration
 # ------------------------------------------------------------------------

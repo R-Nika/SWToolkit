@@ -7,7 +7,8 @@ bl_info = {
     "description": "Blender Toolkit for the Stormworks modding workflow. (ALPHA)",
 }
 
-DEBUG = True  
+DEBUG = True
+CURRENT_VERSION = ".".join(str(x) for x in bl_info["version"])  
 
 import bpy
 import sys
