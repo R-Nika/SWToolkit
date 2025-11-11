@@ -41,8 +41,6 @@ class OBJECT_OT_split_edges_and_set_colors(bpy.types.Operator):
             # Make it active and display in viewport
             obj.data.color_attributes.active = color_attribute
             obj.data.color_attributes.active_color = color_attribute
-
-
             
             if materials:
                 for poly in obj.data.polygons:
@@ -104,17 +102,33 @@ class OBJECT_OT_vertex_color_to_materials(bpy.types.Operator):
                 clamped_color = tuple(min(max(c, 0.0), 1.0) for c in color)
 
                 if clamped_color not in unique_colors:
-                    # Convert to 0-255 for RGB
-                    r, g, b = [int(c * 255) for c in clamped_color]
+                    # Convert from linear to sRGB color space with precision handling
+                    def linear_to_srgb(c):
+                        # Handle exact 0.0 and 1.0 to avoid floating point errors
+                        if c <= 0.0:
+                            return 0.0
+                        elif c >= 1.0:
+                            return 1.0
+                        elif c < 0.0031308:
+                            return c * 12.92
+                        else:
+                            return 1.055 * (c ** (1.0/2.4)) - 0.055
+                    
+                    srgb_color = tuple(linear_to_srgb(c) for c in clamped_color)
+                    
+                    # Convert to 0-255 for RGB naming, with rounding to handle floating point precision
+                    r, g, b = [round(c * 255) for c in srgb_color]
                     hex_color = f"#{r:02X}{g:02X}{b:02X}"
                     mat_name = f"{hex_color} ({r},{g},{b})"
 
-                    # Create new material
+                    print(f"Creating material: {mat_name} (from linear {clamped_color} to sRGB {srgb_color})")
+
+                    # Create new material - use SRGB color for the material
                     mat = bpy.data.materials.new(name=mat_name)
                     mat.use_nodes = True
                     bsdf = mat.node_tree.nodes.get("Principled BSDF")
                     if bsdf:
-                        bsdf.inputs["Base Color"].default_value = (*clamped_color, 1.0)
+                        bsdf.inputs["Base Color"].default_value = (*srgb_color, 1.0)
                         if "Roughness" in bsdf.inputs:
                             bsdf.inputs["Roughness"].default_value = 1.0
                         if "Specular" in bsdf.inputs:

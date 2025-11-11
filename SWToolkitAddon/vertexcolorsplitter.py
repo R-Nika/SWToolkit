@@ -62,6 +62,9 @@ class OBJECT_OT_separate_by_vertex_color(bpy.types.Operator):
             color_faces.setdefault(avg_color, []).append(face)
 
         created_objects = []
+        
+        # Dictionary to store materials we've already created
+        material_cache = {}
 
         # Create new objects per color
         for color, faces in color_faces.items():
@@ -155,18 +158,42 @@ class OBJECT_OT_separate_by_vertex_color(bpy.types.Operator):
                 
                 bm_temp.free()
 
-            # Vertex color material
-            mat = bpy.data.materials.new(name=f"{hex_color}")
-            mat.use_nodes = True
-            nodes = mat.node_tree.nodes
-            links = mat.node_tree.links
-            nodes.clear()
-            out_node = nodes.new("ShaderNodeOutputMaterial")
-            bsdf = nodes.new("ShaderNodeBsdfPrincipled")
-            vc_node = nodes.new("ShaderNodeVertexColor")
-            vc_node.layer_name = "Col"
-            links.new(vc_node.outputs['Color'], bsdf.inputs['Base Color'])
-            links.new(bsdf.outputs['BSDF'], out_node.inputs['Surface'])
+            # Vertex color material - REUSE EXISTING MATERIALS (matching the other script's naming)
+            material_name = f"#{hex_color} ({name_rgb})"
+
+            # Check if we've already created this material in this session
+            if material_name in material_cache:
+                mat = material_cache[material_name]
+            else:
+                # Check if material already exists in the blend file
+                if material_name in bpy.data.materials:
+                    mat = bpy.data.materials[material_name]
+                else:
+                    # Create new material with GAMMA CORRECTION to fix brightness
+                    mat = bpy.data.materials.new(name=material_name)
+                    mat.use_nodes = True
+                    nodes = mat.node_tree.nodes
+                    links = mat.node_tree.links
+                    nodes.clear()
+                    
+                    out_node = nodes.new("ShaderNodeOutputMaterial")
+                    bsdf = nodes.new("ShaderNodeBsdfPrincipled")
+                    vc_node = nodes.new("ShaderNodeVertexColor")
+                    vc_node.layer_name = "Col"
+                    
+                    # ADD GAMMA CORRECTION NODE to fix brightness
+                    gamma_node = nodes.new("ShaderNodeGamma")
+                    gamma_node.inputs['Gamma'].default_value = 2.2  # sRGB gamma correction
+                    
+                    # Connect: Vertex Color → Gamma → BSDF
+                    links.new(vc_node.outputs['Color'], gamma_node.inputs['Color'])
+                    links.new(gamma_node.outputs['Color'], bsdf.inputs['Base Color'])
+                    links.new(bsdf.outputs['BSDF'], out_node.inputs['Surface'])
+                
+                # Cache the material for reuse in this operation
+                material_cache[material_name] = mat
+            
+            # Assign material to object
             new_obj.data.materials.append(mat)
 
         # Hide original

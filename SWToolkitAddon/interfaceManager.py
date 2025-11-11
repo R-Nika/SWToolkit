@@ -16,7 +16,7 @@ def _label_multiline(context, text, parent):
 # ------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------
-CURRENT_VERSION = "0.1.2"
+CURRENT_VERSION = "0.1.3"
 GITHUB_API_RELEASES_URL = "https://api.github.com/repos/R-Nika/SWToolkit/releases/latest"
 
 # Store update info globally
@@ -78,7 +78,7 @@ class SWToolkitPanel(bpy.types.Panel):
         version_box = main_box.box()
         version_box.label(text=f"[ALPHA] SW Toolkit v{CURRENT_VERSION}", icon='FILE_TICK')
 
-        # Show yellow warning if update available
+        # Show warning if update available
         global UPDATE_AVAILABLE, LATEST_VERSION
         if UPDATE_AVAILABLE and LATEST_VERSION:
             warn_row = version_box.row()
