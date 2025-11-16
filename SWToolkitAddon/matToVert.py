@@ -3,11 +3,11 @@ import bmesh
 
 from .interfaceManager import _label_multiline
 
-# Operator for splitting edges and setting vertex colors
-class OBJECT_OT_split_edges_and_set_colors(bpy.types.Operator):
-    bl_idname = "object.split_edges_and_set_colors"
-    bl_label = "Split Edges and Set Vertex Colors"
-    bl_description = "Convert materials to vertex colors and split edges to prevent color gradient"
+# Operator for setting vertex colors
+class OBJECT_OT_set_vertex_colors(bpy.types.Operator):
+    bl_idname = "object.set_vertex_colors"
+    bl_label = "Materials to Vertex Colors"
+    bl_description = "Convert materials to vertex colors"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
@@ -16,25 +16,9 @@ class OBJECT_OT_split_edges_and_set_colors(bpy.types.Operator):
             bpy.context.view_layer.objects.active = obj
             bpy.ops.object.mode_set(mode='OBJECT')
 
-            bm = bmesh.new()
-            bm.from_mesh(obj.data)
-
-            edges_to_split = [edge for edge in bm.edges if len(edge.link_faces) > 1]
-            if edges_to_split:
-                bmesh.ops.split_edges(bm, edges=edges_to_split)
-                bm.to_mesh(obj.data)
-                obj.data.update()
-                self.report({'INFO'}, f"Split all edges for {obj.name}")
-
-            bm.free()
-
             # Remove old vertex color layer if it exists
             if "Col" in obj.data.attributes:
                 obj.data.attributes.remove(obj.data.attributes["Col"])
-
-            # Force Blender to rebuild mesh after edge split
-            obj.data.update()
-            bpy.context.view_layer.update()
 
             # Create fresh vertex color layer
             color_attribute = obj.data.attributes.new(name="Col", type='FLOAT_COLOR', domain='POINT')
@@ -61,6 +45,7 @@ class OBJECT_OT_split_edges_and_set_colors(bpy.types.Operator):
             else:
                 self.report({'WARNING'}, "No materials found on the object.")
 
+            # Clean up other vertex color layers
             for obj in bpy.context.selected_objects:
                 if obj.type == "MESH" and obj.data.color_attributes:
                     attrs = obj.data.color_attributes
@@ -90,6 +75,23 @@ class OBJECT_OT_vertex_color_to_materials(bpy.types.Operator):
                 self.report({'ERROR'}, f"Object '{obj.name}' has no vertex color attribute named 'Col'")
                 return {'CANCELLED'}
 
+            color_attribute = obj.data.attributes["Col"]
+            
+            # AUTO-CONVERT: If byte color, convert to float using Blender's built-in tool
+            if color_attribute.data_type == 'BYTE_COLOR':
+                self.report({'INFO'}, "Converting byte colors to float for accuracy")
+                
+                # Select the object and make color attribute active
+                bpy.ops.object.select_all(action='DESELECT')
+                obj.select_set(True)
+                obj.data.color_attributes.active = color_attribute
+                
+                # Use Blender's built-in conversion
+                bpy.ops.geometry.color_attribute_convert()
+                
+                # Refresh the reference
+                color_attribute = obj.data.attributes["Col"]
+
             # Remove custom normals if enabled
             if context.scene.remove_custom_normals and "custom_normal" in obj.data.attributes:
                 obj.data.attributes.remove(obj.data.attributes["custom_normal"])
@@ -111,22 +113,8 @@ class OBJECT_OT_vertex_color_to_materials(bpy.types.Operator):
                 clamped_color = tuple(min(max(c, 0.0), 1.0) for c in color)
 
                 if clamped_color not in unique_colors:
-                    # Convert from linear to sRGB color space with precision handling
-                    def linear_to_srgb(c):
-                        # Handle exact 0.0 and 1.0 to avoid floating point errors
-                        if c <= 0.0:
-                            return 0.0
-                        elif c >= 1.0:
-                            return 1.0
-                        elif c < 0.0031308:
-                            return c * 12.92
-                        else:
-                            return 1.055 * (c ** (1.0/2.4)) - 0.055
-                    
-                    srgb_color = tuple(linear_to_srgb(c) for c in clamped_color)
-                    
                     # Convert to 0-255 for RGB naming, with rounding to handle floating point precision
-                    r, g, b = [round(c * 255) for c in srgb_color]
+                    r, g, b = [round(c * 255) for c in clamped_color]
                     hex_color = f"#{r:02X}{g:02X}{b:02X}"
                     
                     # Auto name glass functionality
@@ -135,14 +123,14 @@ class OBJECT_OT_vertex_color_to_materials(bpy.types.Operator):
                     else:
                         mat_name = f"{hex_color} ({r},{g},{b})"
 
-                    print(f"Creating material: {mat_name} (from linear {clamped_color} to sRGB {srgb_color})")
+                    print(f"Creating material: {mat_name} (from linear {clamped_color} to sRGB {clamped_color})")
 
                     # Create new material - use SRGB color for the material
                     mat = bpy.data.materials.new(name=mat_name)
                     mat.use_nodes = True
                     bsdf = mat.node_tree.nodes.get("Principled BSDF")
                     if bsdf:
-                        bsdf.inputs["Base Color"].default_value = (*srgb_color, 1.0)
+                        bsdf.inputs["Base Color"].default_value = (*clamped_color, 1.0)
                         if "Roughness" in bsdf.inputs:
                             bsdf.inputs["Roughness"].default_value = 1.0
                         if "Specular" in bsdf.inputs:
@@ -179,7 +167,7 @@ class SWToolkitSplitPanel(bpy.types.Panel):
         
         # Buttons inside inner box
         inner_box = outer_box.box()
-        inner_box.operator("object.split_edges_and_set_colors", text="Materials to Vertex Color")
+        inner_box.operator("object.set_vertex_colors", text="Materials to Vertex Color")
         inner_box.operator("object.vertex_color_to_materials", text="Vertex Colors to Materials")
         
         # Settings collapsible area INSIDE the outer box
@@ -196,7 +184,7 @@ class SWToolkitSplitPanel(bpy.types.Panel):
 
 # Register and unregister functions
 def register():
-    bpy.utils.register_class(OBJECT_OT_split_edges_and_set_colors)
+    bpy.utils.register_class(OBJECT_OT_set_vertex_colors)
     bpy.utils.register_class(OBJECT_OT_vertex_color_to_materials)
     bpy.utils.register_class(SWToolkitSplitPanel)
 
@@ -218,7 +206,7 @@ def register():
     )
 
 def unregister():
-    bpy.utils.unregister_class(OBJECT_OT_split_edges_and_set_colors)
+    bpy.utils.unregister_class(OBJECT_OT_set_vertex_colors)
     bpy.utils.unregister_class(OBJECT_OT_vertex_color_to_materials)
     bpy.utils.unregister_class(SWToolkitSplitPanel)
     

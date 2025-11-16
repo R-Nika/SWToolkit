@@ -16,6 +16,7 @@ import math
 
 def rgb_to_hex(color):
     return ''.join(f'{int(c*255):02X}' for c in color)
+    
 
 class OBJECT_OT_separate_by_vertex_color(bpy.types.Operator):
     bl_idname = "object.separate_by_vertex_color"
