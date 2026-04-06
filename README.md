@@ -1,6 +1,6 @@
 # SW Toolkit Addon for Blender (v4.5+ LTS)
 
-The **SW Toolkit** is a Blender add-on built specifically for **Stormworks modding**, focused on speeding up workflow and simplifying common tasks like color conversion and mesh preparation.
+The **SW Toolkit** is a Blender add-on built specifically for **Stormworks modding**, designed to speed up workflow and simplify common tasks like color conversion, mesh preparation, and modification of `.anim` file geometry.
 
 ---
 
