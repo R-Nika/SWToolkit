@@ -15,6 +15,12 @@ The **SW Toolkit** is a Blender add-on built specifically for **Stormworks moddi
 
 ## ✨ Features
 
+### 🎞️ .anim File Editing *(WIP)*
+
+* Import and export `.anim` files
+
+---
+
 ### 🎨 Color Conversion Tools
 
 #### Separate by Vertex Color
@@ -31,10 +37,6 @@ Convert between materials and vertex colors.
 ---
 
 ## 🛠️ Planned Features
-
-### .anim File Editing *(WIP)*
-
-* Import and export `.anim` files
 
 ### Map Editing *(Planned)*
 
