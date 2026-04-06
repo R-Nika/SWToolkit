@@ -4,20 +4,24 @@ The **SW Toolkit** is a Blender add-on built specifically for **Stormworks moddi
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start / Use Cases
 
-1. Install the addon (see below)
-2. Select your object
-3. Open the **SW Toolkit panel** in Blender
-4. Use the tools to convert colors or split meshes
+* **.anim Tools:**
+  Allows modification of mesh geometry in `.anim` files, such as characters, armor, and animals. 
 
----
+* **Separate by Vertex Color:**
+  Ideal for cleaning up exported vehicles for use as meshes.
+
+* **Color Conversion Tools:**
+  Streamlines the coloring process for map building, props, and component modeling.
+
+> Note: This addon only edits the mesh, not animations.
 
 ## ✨ Features
 
-### 🎞️ .anim File Editing *(WIP)*
+### 🎞️ .anim Tools*
 
-* Import and export `.anim` files
+* Import mesh geometry and armature from .anim files, and export it back to .anim
 
 ---
 
@@ -43,6 +47,23 @@ Convert between materials and vertex colors.
 * Road editing tools
 
 ---
+
+## ⚠️ Important Notes for .anim Editing
+
+### Creating Glass
+
+To create glass, selected faces **must** be assigned to a material called `glass` with the color `#E7E7E7FF`.
+
+### Vertex Groups
+
+All vertices **must** be assigned to a vertex group of the armature.
+If this is not done, the mesh will be invisible in-game.
+
+### Animations
+
+This addon **does not support editing animations**, only geometry.
+There are **no plans** to add animation support at this time.
+
 
 ## 📦 Installation
 
