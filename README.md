@@ -19,7 +19,7 @@ The **SW Toolkit** is a Blender add-on built specifically for **Stormworks moddi
 
 ## ✨ Features
 
-### 🎞️ .anim Tools*
+### 🎞️ .anim Tools
 
 * Import mesh geometry and armature from .anim files, and export it back to .anim
 
@@ -45,6 +45,8 @@ Convert between materials and vertex colors.
 ### Map Editing *(Planned)*
 
 * Road editing tools
+* Fence placement tool
+* Building "generator"
 
 ---
 
