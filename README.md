@@ -37,6 +37,13 @@ Automatically convert between materials and vertex colors.
 
 ---
 
+## 📖 Documentation & Installation
+
+Full installation steps, usage guides, and troubleshooting tips are available in the **[Wiki](https://github.com/R-Nika/SWToolkit/wiki/Home/_edit)**.
+
+
+---
+
 ## 🛠️ Planned Features
 
 ### Map Editing *(Planned)*
@@ -44,13 +51,6 @@ Automatically convert between materials and vertex colors.
 * Road editing tools
 * Fence placement tool
 * Building "generator"
-
----
-
-## 📖 Documentation & Installation
-
-Full installation steps, usage guides, and troubleshooting tips are available in the **[Wiki](https://github.com/R-Nika/SWToolkit/wiki/Home/_edit)**.
-
 
 ---
 
