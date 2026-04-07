@@ -49,7 +49,7 @@ Automatically convert between materials and vertex colors.
 
 ## 📖 Documentation & Installation
 
-Full installation steps, usage guides, and troubleshooting tips are available in the **[Wiki](https://github.com/yourusername/SWToolkit/wiki)**.
+Full installation steps, usage guides, and troubleshooting tips are available in the **[Wiki](https://github.com/R-Nika/SWToolkit/wiki/Home/_edit)**.
 
 
 ---
