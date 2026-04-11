@@ -46,6 +46,10 @@ Full installation steps, usage guides, and troubleshooting tips are available in
 
 ## 🛠️ Planned Features
 
+### Tools
+
+* .mesh importer/exporter
+
 ### Map Editing *(Planned)*
 
 * Road editing tools
