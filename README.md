@@ -50,7 +50,7 @@ Full installation steps, usage guides, and troubleshooting tips are available in
 
 * .mesh importer/exporter
 
-### Map Editing *(Planned)*
+### Map Editing
 
 * Road editing tools
 * Fence placement tool
