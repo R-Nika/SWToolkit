@@ -132,9 +132,9 @@ def export_anim(mesh_obj, output_path, context):
             sw_y = co.z
             sw_z = -co.y
 
-            sw_nx = normal.x
-            sw_ny = -normal.z
-            sw_nz = normal.y
+            sw_nx = -normal.x
+            sw_ny = normal.z
+            sw_nz = -normal.y
 
             # Vertex color
             if color_layer:
