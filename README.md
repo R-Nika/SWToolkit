@@ -4,6 +4,12 @@ The **SW Toolkit** is a Blender add-on built specifically for **Stormworks moddi
 
 ---
 
+## 📖 Documentation & Installation
+
+Full installation steps, usage guides, and troubleshooting tips are available in the **[Wiki](https://github.com/R-Nika/SWToolkit/wiki/Home/_edit)**.
+
+---
+
 ## 🚀 Quick Start / Use Cases
 
 * **.anim Tools:**
@@ -34,12 +40,6 @@ Splits a mesh into separate objects based on vertex colors, with optional cleanu
 #### Color Converting Tool
 
 Automatically convert between materials and vertex colors.
-
----
-
-## 📖 Documentation & Installation
-
-Full installation steps, usage guides, and troubleshooting tips are available in the **[Wiki](https://github.com/R-Nika/SWToolkit/wiki/Home/_edit)**.
 
 
 ---
