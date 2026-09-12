@@ -1,74 +1,54 @@
 # SW Toolkit Addon for Blender (v4.5+ LTS)
 
-The **SW Toolkit** is a Blender add-on built specifically for **Stormworks modding**, designed to speed up workflow and simplify tasks like color conversion, mesh preparation, and `.anim` file geometry editing.
+The SW Toolkit is a Blender add-on for Stormworks modding, focused on working with `.anim`, `.mesh`, and `.phys` files. It also includes a range of tools to streamline common tasks.
 
----
+## Documentation & Installation
 
-## 📖 Documentation & Installation
+Full installation steps, usage guides, and troubleshooting information are available in the [Wiki](https://github.com/R-Nika/SWToolkit/wiki/Home).
 
-Full installation steps, usage guides, and troubleshooting tips are available in the **[Wiki](https://github.com/R-Nika/SWToolkit/wiki/Home/_edit)**.
+## Features
 
----
+### .anim Tools
 
-## 🚀 Quick Start / Use Cases
+- Import geometry and armatures from `.anim` files.
+- Export modified geometry back to `.anim` files.
 
-* **.anim Tools:**
-  Allows modification of mesh geometry in `.anim` files, such as characters, armor, and animals.
+### .mesh Tools
 
-* **Separate by Vertex Color:**
-  Ideal for cleaning up exported vehicles for use as meshes.
+- Import Stormworks `.mesh` files.
+- Export Blender meshes to Stormworks `.mesh` files.
 
-* **Color Conversion Tools:**
-  Streamlines the coloring process for map building, props, and component modeling.
+### .phys Tools
 
----
+- Import Stormworks `.phys` files.
+- Export Blender meshes to Stormworks `.phys` files.
 
-## ✨ Features
-
-### 🎞️ .anim Tools
-
-* Import geometry and armature from `.anim` files, and export it back to `.anim`
-
----
-
-### 🎨 Color Conversion Tools
+### Color Conversion Tools
 
 #### Separate by Vertex Color
 
-Splits a mesh into separate objects based on vertex colors, with optional cleanup tools.
+Splits a mesh into separate objects based on vertex colors, with optional geometry cleanup tools.
 
-#### Color Converting Tool
+#### Color Type Converter
 
-Automatically convert between materials and vertex colors.
+Convert between materials and vertex colors.
 
-
----
-
-## 🛠️ Planned Features
+## Planned Features
 
 ### Tools
 
-* .mesh importer/exporter
+- Additional mesh tools.
 
 ### Map Editing
 
-* Road editing tools
-* Fence placement tool
-* Building "generator"
+- Road editing tools.
+- Fence placement tool.
+- Building generator.
 
----
+## Support
 
-## 💬 Feedback & Support
+For suggestions, issues, or questions, join the [SMF Discord](https://discord.gg/mFY8Wuk).
 
-Got suggestions or issues?
-Join the **[SMF Discord](https://discord.gg/mFY8Wuk)**
+## Support the Project
 
----
-
-## &#x20;
-
-## ❤️ Support the Project
-
-If you enjoy using the addon, you can support development [here](http://www.buymeacoffee.com/nika_cheese)
-
-  
+If you enjoy using the addon, you can support development [here](http://www.buymeacoffee.com/nika_cheese).
