@@ -1,6 +1,10 @@
 import bpy
 import bmesh
+import math
 
+# def rgb_to_hex(color):
+#     return ''.join(f'{int(c*255):02X}' for c in color)
+    
 def rgb_to_hex(color):
     """Convert 3-tuple RGB (0..1) to hex string."""
     return "#{:02X}{:02X}{:02X}".format(
@@ -8,15 +12,6 @@ def rgb_to_hex(color):
         int(color[1] * 255),
         int(color[2] * 255)
     )
-
-
-import bpy
-import bmesh
-import math
-
-def rgb_to_hex(color):
-    return ''.join(f'{int(c*255):02X}' for c in color)
-    
 
 class OBJECT_OT_separate_by_vertex_color(bpy.types.Operator):
     bl_idname = "object.separate_by_vertex_color"
@@ -275,135 +270,148 @@ class OBJECT_OT_separate_by_vertex_color(bpy.types.Operator):
         self.report({'INFO'}, f"Separated mesh into {len(created_objects)} object(s) by vertex color.")
         return {'FINISHED'}
 
-class VIEW3D_PT_separate_by_vertex_color_panel(bpy.types.Panel):
-    bl_label = "Separate by Vertex Color"
-    bl_idname = "VIEW3D_PT_separate_by_vertex_color"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = 'SW Toolkit'
-
-    def draw(self, context):
-        layout = self.layout
-        
-        # Main outer box
-        outer_box = layout.box()
-        
-        # Operator button inside inner box
-        inner_box = outer_box.box()
-        inner_box.operator(
-            OBJECT_OT_separate_by_vertex_color.bl_idname,
-            text="Separate by Vertex Color",
-            icon="MESH_CUBE"
-        )
-
-        # Settings collapsible area INSIDE the outer box
-        settings_box = outer_box.box()
-        row = settings_box.row()
-        icon = "TRIA_DOWN" if context.scene.show_separate_settings else "TRIA_RIGHT"
-        row.prop(context.scene, "show_separate_settings", text="", icon=icon, emboss=False)
-        row.label(text="Settings")
-
-        if context.scene.show_separate_settings:
-            # Box for Domain settings
-            domain_box = settings_box.box()
-            header_row = domain_box.row()
-            header_row.alignment = 'CENTER'
-            header_row.label(text="Color Settings")
-            domain_box.prop(context.scene, "vertex_color_domain", text="Domain")
-            domain_box.prop(context.scene, "transfer_materials", text="Transfer Materials")
-            
-            # Show Link Materials only if Transfer Materials is enabled
-            if context.scene.transfer_materials:
-                domain_box.prop(context.scene, "link_materials", text="Link Materials")
-            
-            # Box for Geometry processing settings
-            geometry_box = settings_box.box()
-            header_row = geometry_box.row()
-            header_row.alignment = 'CENTER'
-            header_row.label(text="Geometry Processing")
-            geometry_box.prop(context.scene, "join_after_separate", text="Join Resulting Objects")
-            geometry_box.prop(context.scene, "triangulate_after_separate", text="Triangulate")
-            geometry_box.prop(context.scene, "edgesplit_after_separate", text="Edge Split")
-            geometry_box.prop(context.scene, "merge_by_distance_after_separate", text="Merge by Distance")
-            geometry_box.prop(context.scene, "limited_dissolve_after_separate", text="Limited Dissolve")
-
-
-# Registration
-classes = (
-    OBJECT_OT_separate_by_vertex_color,
-    VIEW3D_PT_separate_by_vertex_color_panel,
-)
 
 
 def register():
-    for cls in classes:
-        bpy.utils.register_class(cls)
-
-    bpy.types.Scene.vertex_color_domain = bpy.props.EnumProperty(
-        name="Domain",
-        description="Vertex color domain to use for separation",
-        items=[
-            ('CORNER', "Corner", "Use corner domain (per-face vertex colors)"),
-            ('POINT', "Point", "Use point domain (per-vertex colors)")
-        ],
-        default='CORNER'
-    )
-    bpy.types.Scene.transfer_materials = bpy.props.BoolProperty(
-        name="Transfer Materials",
-        description="Copy materials from original to separated objects",
-        default=False
-    )
-    bpy.types.Scene.link_materials = bpy.props.BoolProperty(
-        name="Link Materials",
-        description="Share materials between original and separated objects",
-        default=True
-    )
-    bpy.types.Scene.join_after_separate = bpy.props.BoolProperty(
-        name="Join Resulting Objects",
-        description="Join all separated objects into one after splitting",
-        default=False
-    )
-    bpy.types.Scene.triangulate_after_separate = bpy.props.BoolProperty(
-        name="Triangulate",
-        description="Triangulate resulting meshes after separation",
-        default=False
-    )
-    bpy.types.Scene.edgesplit_after_separate = bpy.props.BoolProperty(
-        name="Edge Split",
-        description="Split faces by edges shared by multiple faces",
-        default=False
-    )
-    bpy.types.Scene.merge_by_distance_after_separate = bpy.props.BoolProperty(
-        name="Merge by Distance",
-        description="Merge overlapping vertices after separation",
-        default=False
-    )
-    bpy.types.Scene.limited_dissolve_after_separate = bpy.props.BoolProperty(
-        name="Limited Dissolve",
-        description="Perform limited dissolve on resulting meshes",
-        default=False
-    )
-    bpy.types.Scene.show_separate_settings = bpy.props.BoolProperty(
-        name="Show Tool Settings",
-        description="Expand or collapse settings for separation",
-        default=False
-    )
+    bpy.utils.register_class(OBJECT_OT_separate_by_vertex_color)
 
 
 def unregister():
-    for cls in reversed(classes):
-        bpy.utils.unregister_class(cls)
-
-    del bpy.types.Scene.vertex_color_domain
-    del bpy.types.Scene.transfer_materials
-    del bpy.types.Scene.link_materials
-    del bpy.types.Scene.join_after_separate
-    del bpy.types.Scene.triangulate_after_separate
-    del bpy.types.Scene.edgesplit_after_separate
-    del bpy.types.Scene.merge_by_distance_after_separate
-    del bpy.types.Scene.limited_dissolve_after_separate
-    del bpy.types.Scene.show_separate_settings
+    bpy.utils.unregister_class(OBJECT_OT_separate_by_vertex_color)
 
 
 if __name__ == "__main__":
     register()
+
+# class VIEW3D_PT_separate_by_vertex_color_panel(bpy.types.Panel):
+#     bl_label = "Separate by Vertex Color"
+#     bl_idname = "VIEW3D_PT_separate_by_vertex_color"
+#     bl_space_type = 'VIEW_3D'
+#     bl_region_type = 'UI'
+#     bl_category = 'SW Toolkit'
+
+#     def draw(self, context):
+#         layout = self.layout
+        
+#         # Main outer box
+#         outer_box = layout.box()
+        
+#         # Operator button inside inner box
+#         inner_box = outer_box.box()
+#         inner_box.operator(
+#             OBJECT_OT_separate_by_vertex_color.bl_idname,
+#             text="Separate by Vertex Color",
+#             icon="MESH_CUBE"
+#         )
+
+#         # Settings collapsible area INSIDE the outer box
+#         settings_box = outer_box.box()
+#         row = settings_box.row()
+#         icon = "TRIA_DOWN" if context.scene.show_separate_settings else "TRIA_RIGHT"
+#         row.prop(context.scene, "show_separate_settings", text="", icon=icon, emboss=False)
+#         row.label(text="Settings")
+
+#         if context.scene.show_separate_settings:
+#             # Box for Domain settings
+#             domain_box = settings_box.box()
+#             header_row = domain_box.row()
+#             header_row.alignment = 'CENTER'
+#             header_row.label(text="Color Settings")
+#             domain_box.prop(context.scene, "vertex_color_domain", text="Domain")
+#             domain_box.prop(context.scene, "transfer_materials", text="Transfer Materials")
+            
+#             # Show Link Materials only if Transfer Materials is enabled
+#             if context.scene.transfer_materials:
+#                 domain_box.prop(context.scene, "link_materials", text="Link Materials")
+            
+#             # Box for Geometry processing settings
+#             geometry_box = settings_box.box()
+#             header_row = geometry_box.row()
+#             header_row.alignment = 'CENTER'
+#             header_row.label(text="Geometry Processing")
+#             geometry_box.prop(context.scene, "join_after_separate", text="Join Resulting Objects")
+#             geometry_box.prop(context.scene, "triangulate_after_separate", text="Triangulate")
+#             geometry_box.prop(context.scene, "edgesplit_after_separate", text="Edge Split")
+#             geometry_box.prop(context.scene, "merge_by_distance_after_separate", text="Merge by Distance")
+#             geometry_box.prop(context.scene, "limited_dissolve_after_separate", text="Limited Dissolve")
+
+
+# # Registration
+# classes = (
+#     OBJECT_OT_separate_by_vertex_color,
+#     VIEW3D_PT_separate_by_vertex_color_panel,
+# )
+
+
+# def register():
+#     for cls in classes:
+#         bpy.utils.register_class(cls)
+
+#     bpy.types.Scene.vertex_color_domain = bpy.props.EnumProperty(
+#         name="Domain",
+#         description="Vertex color domain to use for separation",
+#         items=[
+#             ('CORNER', "Corner", "Use corner domain (per-face vertex colors)"),
+#             ('POINT', "Point", "Use point domain (per-vertex colors)")
+#         ],
+#         default='CORNER'
+#     )
+#     bpy.types.Scene.transfer_materials = bpy.props.BoolProperty(
+#         name="Transfer Materials",
+#         description="Copy materials from original to separated objects",
+#         default=False
+#     )
+#     bpy.types.Scene.link_materials = bpy.props.BoolProperty(
+#         name="Link Materials",
+#         description="Share materials between original and separated objects",
+#         default=True
+#     )
+#     bpy.types.Scene.join_after_separate = bpy.props.BoolProperty(
+#         name="Join Resulting Objects",
+#         description="Join all separated objects into one after splitting",
+#         default=False
+#     )
+#     bpy.types.Scene.triangulate_after_separate = bpy.props.BoolProperty(
+#         name="Triangulate",
+#         description="Triangulate resulting meshes after separation",
+#         default=False
+#     )
+#     bpy.types.Scene.edgesplit_after_separate = bpy.props.BoolProperty(
+#         name="Edge Split",
+#         description="Split faces by edges shared by multiple faces",
+#         default=False
+#     )
+#     bpy.types.Scene.merge_by_distance_after_separate = bpy.props.BoolProperty(
+#         name="Merge by Distance",
+#         description="Merge overlapping vertices after separation",
+#         default=False
+#     )
+#     bpy.types.Scene.limited_dissolve_after_separate = bpy.props.BoolProperty(
+#         name="Limited Dissolve",
+#         description="Perform limited dissolve on resulting meshes",
+#         default=False
+#     )
+#     bpy.types.Scene.show_separate_settings = bpy.props.BoolProperty(
+#         name="Show Tool Settings",
+#         description="Expand or collapse settings for separation",
+#         default=False
+#     )
+
+
+# def unregister():
+#     for cls in reversed(classes):
+#         bpy.utils.unregister_class(cls)
+
+#     del bpy.types.Scene.vertex_color_domain
+#     del bpy.types.Scene.transfer_materials
+#     del bpy.types.Scene.link_materials
+#     del bpy.types.Scene.join_after_separate
+#     del bpy.types.Scene.triangulate_after_separate
+#     del bpy.types.Scene.edgesplit_after_separate
+#     del bpy.types.Scene.merge_by_distance_after_separate
+#     del bpy.types.Scene.limited_dissolve_after_separate
+#     del bpy.types.Scene.show_separate_settings
+
+
+# if __name__ == "__main__":
+#     register()
