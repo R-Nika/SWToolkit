@@ -118,8 +118,11 @@ def shader_id_for_vertex_group(obj, vertex_index):
     """
     Determine the Stormworks shader for a vertex.
 
-    The vertex must belong to exactly one of the shader groups:
-    Opaque, Glass, Emissive, Lava.
+    If the vertex does not belong to any shader group,
+    it defaults to Opaque.
+
+    A vertex belonging to multiple shader groups is still
+    considered an error.
     """
 
     shader_group_names = {
@@ -148,11 +151,9 @@ def shader_id_for_vertex_group(obj, vertex_index):
                 (group_name, shader_id)
             )
 
+    # No shader group = Opaque
     if len(matches) == 0:
-        raise ValueError(
-            f"Vertex {vertex_index} does not belong to a shader "
-            "vertex group. Expected Opaque, Glass, Emissive, or Lava."
-        )
+        return SHADER_IDS["opaque"], "Opaque"
 
     if len(matches) > 1:
         names = ", ".join(
@@ -170,8 +171,11 @@ def shader_id_for_vertex_group(obj, vertex_index):
 
 
 def build_mesh_data(obj, use_shaders, shader_source):
+
     if obj.type != 'MESH':
-        raise ValueError("The active object must be a mesh.")
+        raise ValueError(
+            "The active object must be a mesh."
+        )
 
     mesh = obj.data
 
@@ -179,53 +183,6 @@ def build_mesh_data(obj, use_shaders, shader_source):
     vertex_lookup = {}
 
     submesh_indices = OrderedDict()
-
-    # ------------------------------------------------------------
-    # MATERIAL SHADER MODE
-    # ------------------------------------------------------------
-
-    if use_shaders and shader_source == 'MATERIALS':
-
-        # Pre-create groups in Blender material-slot order.
-        for material in mesh.materials:
-
-            shader_id = shader_id_for_material(material)
-
-            if shader_id is not None:
-                submesh_indices.setdefault(
-                    (shader_id, material.name),
-                    {
-                        "shader_id": shader_id,
-                        "name": material.name,
-                        "indices": []
-                    },
-                )
-
-    # ------------------------------------------------------------
-    # VERTEX GROUP SHADER MODE
-    # ------------------------------------------------------------
-
-    elif use_shaders and shader_source == 'VERTEX_GROUPS':
-
-        # Groups are created when encountered during polygon processing.
-        # This preserves the order in which shader types are encountered.
-        pass
-
-    # ------------------------------------------------------------
-    # NO SHADERS
-    # ------------------------------------------------------------
-
-    else:
-
-        # Everything goes into one Opaque submesh.
-        submesh_indices.setdefault(
-            (SHADER_IDS["opaque"], "Opaque"),
-            {
-                "shader_id": SHADER_IDS["opaque"],
-                "name": "Opaque",
-                "indices": []
-            },
-        )
 
     # ------------------------------------------------------------
     # PROCESS POLYGONS
@@ -246,30 +203,42 @@ def build_mesh_data(obj, use_shaders, shader_source):
 
         if not use_shaders:
 
+            # Shaders disabled = everything is Opaque.
             shader_id = SHADER_IDS["opaque"]
             shader_name = "Opaque"
 
         elif shader_source == 'MATERIALS':
 
+            # Material slot may not exist at all.
             material = (
                 mesh.materials[polygon.material_index]
-                if polygon.material_index < len(mesh.materials)
+                if (
+                    polygon.material_index >= 0
+                    and polygon.material_index < len(mesh.materials)
+                )
                 else None
             )
 
             shader_id = shader_id_for_material(material)
 
+            # No material or unknown material = Opaque.
             if shader_id is None:
-                continue
-
-            shader_name = material.name
+                shader_id = SHADER_IDS["opaque"]
+                shader_name = "Opaque"
+            else:
+                shader_name = material.name.strip()
 
         else:
 
-            # Vertex Groups mode.
+            # ----------------------------------------------------
+            # Vertex Groups mode
+            # ----------------------------------------------------
             #
             # All three vertices of the triangle must resolve to
             # the same shader group.
+            #
+            # If no shader groups exist, every vertex automatically
+            # resolves to Opaque.
 
             triangle_shader_ids = []
             triangle_shader_names = []
@@ -374,6 +343,10 @@ def build_mesh_data(obj, use_shaders, shader_source):
         # Keep Blender's loop order.
         group["indices"].extend(triangle)
 
+    # ------------------------------------------------------------
+    # VERTEX LIMIT
+    # ------------------------------------------------------------
+
     if len(vertices) > 0xFFFF:
         raise ValueError(
             f"Mesh has {len(vertices)} exported vertices; "
@@ -430,10 +403,16 @@ def write_mesh(
 
     output = bytearray()
 
+    # ------------------------------------------------------------
     # Magic
+    # ------------------------------------------------------------
+
     output += b"mesh"
 
+    # ------------------------------------------------------------
     # Header
+    # ------------------------------------------------------------
+
     output += struct.pack(
         "<IHI",
         MESH_FORMAT_VERSION,
@@ -441,7 +420,10 @@ def write_mesh(
         MESH_SECONDARY_HEADER
     )
 
+    # ------------------------------------------------------------
     # Vertex data
+    # ------------------------------------------------------------
+
     for position, color, normal in vertices:
 
         output += struct.pack(
@@ -451,13 +433,19 @@ def write_mesh(
             *normal
         )
 
+    # ------------------------------------------------------------
     # Index count
+    # ------------------------------------------------------------
+
     output += struct.pack(
         "<I",
         len(indices)
     )
 
+    # ------------------------------------------------------------
     # Indices
+    # ------------------------------------------------------------
+
     output += (
         struct.pack(
             f"<{len(indices)}H",
@@ -467,7 +455,10 @@ def write_mesh(
         else b""
     )
 
+    # ------------------------------------------------------------
     # Submesh count
+    # ------------------------------------------------------------
+
     output += struct.pack(
         "<H",
         len(ordered_groups)
@@ -519,7 +510,10 @@ def write_mesh(
 
         index_start += len(group_indices)
 
+    # ------------------------------------------------------------
     # Required file footer
+    # ------------------------------------------------------------
+
     output += struct.pack(
         "<H",
         0

@@ -3,7 +3,7 @@ bl_info = {
     "blender": (4, 5, 0),
     "category": "Object",
     "author": "Nika",
-    "version": (0, 3, 0),
+    "version": (0, 3, 1),
     "description": "Blender Toolkit for the Stormworks modding workflow.",
 }
 
