@@ -35,6 +35,12 @@ class VIEW3D_PT_sw_mesh_tools(bpy.types.Panel):
             icon='EXPORT',
         )
 
+        mesh_box.operator(
+            "sw_toolkit.fix_imported_meshes",
+            text="Fix Imported Meshes",
+            icon='MODIFIER',
+        )
+
         # --------------------------
         # .phys
         # --------------------------
