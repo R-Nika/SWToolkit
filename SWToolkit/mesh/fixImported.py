@@ -1,7 +1,9 @@
 import bpy
 import bmesh
 
-from bpy.props import BoolProperty
+from math import radians
+
+from bpy.props import BoolProperty, EnumProperty, FloatProperty
 from bpy.types import Operator
 
 FIX_VERSION = 1
@@ -41,7 +43,15 @@ def fix_winding(mesh):
     bm.free()
 
 
-def fix_shading(obj, mesh):
+def flat_shading(mesh):
+    mesh.polygons.foreach_set(
+        "use_smooth",
+        [False] * len(mesh.polygons)
+    )
+    mesh.update()
+
+
+def fix_shading(obj, mesh, angle=0.523599):
     # The old custom normals were wrong, drop them and shade by angle.
     try:
         with bpy.context.temp_override(
@@ -60,7 +70,7 @@ def fix_shading(obj, mesh):
 
     if hasattr(mesh, "use_auto_smooth"):
         mesh.use_auto_smooth = True
-        mesh.auto_smooth_angle = 0.785398
+        mesh.auto_smooth_angle = angle
     elif hasattr(bpy.ops.object, "shade_smooth_by_angle"):
         try:
             with bpy.context.temp_override(
@@ -68,7 +78,7 @@ def fix_shading(obj, mesh):
                 active_object=obj,
                 selected_objects=[obj],
             ):
-                bpy.ops.object.shade_smooth_by_angle(angle=0.785398)
+                bpy.ops.object.shade_smooth_by_angle(angle=angle)
         except Exception as exc:
             print("Stormworks fix: shade by angle failed:", exc)
 
@@ -130,6 +140,23 @@ class SWTOOLKIT_OT_fix_imported(Operator):
         default=False,
     )
 
+    shading: EnumProperty(
+        name="Shading",
+        items=[
+            ('ANGLE', "Smooth by Angle", "Smooth, hard edges above the angle"),
+            ('FLAT', "Flat", "Flat shading"),
+        ],
+        default='ANGLE',
+    )
+
+    angle: FloatProperty(
+        name="Angle",
+        subtype='ANGLE',
+        default=radians(30),
+        min=0.0,
+        max=radians(180),
+    )
+
     def execute(self, context):
 
         if context.mode != 'OBJECT':
@@ -162,7 +189,10 @@ class SWTOOLKIT_OT_fix_imported(Operator):
 
             fix_colors(mesh)
             fix_winding(mesh)
-            fix_shading(obj, mesh)
+            if self.shading == 'FLAT':
+                flat_shading(mesh)
+            else:
+                fix_shading(obj, mesh, self.angle)
             fix_materials(mesh)
 
             mesh[FIX_KEY] = FIX_VERSION

@@ -3,8 +3,9 @@ import struct
 
 from mathutils import Vector
 
+from math import radians
 from pathlib import Path
-from bpy.props import StringProperty, EnumProperty, BoolProperty
+from bpy.props import StringProperty, EnumProperty, FloatProperty
 from bpy.types import Operator
 
 
@@ -381,7 +382,8 @@ def create_object(
     filepath,
     mesh_data,
     shader_source,
-    use_file_normals=False
+    shading='FILE',
+    angle=0.523599
 ):
 
     vertices = mesh_data["vertices"]
@@ -429,11 +431,15 @@ def create_object(
     # Custom Normals
     # --------------------------------------------------------
 
-    if not use_file_normals:
+    if shading == 'FLAT':
 
-        # Shade by angle instead of trusting the file's normals.
+        from .fixImported import flat_shading
+        flat_shading(mesh)
+
+    elif shading == 'ANGLE':
+
         from .fixImported import fix_shading
-        fix_shading(obj, mesh)
+        fix_shading(obj, mesh, angle)
 
     else:
 
@@ -619,13 +625,23 @@ class IMPORT_OT_stormworks_mesh(Operator):
         options={'HIDDEN'}
     )
 
-    use_file_normals: BoolProperty(
-        name="Use Normals From File",
-        description=(
-            "Apply the normals stored in the .mesh. "
-            "Off: shade smooth by angle"
-        ),
-        default=False,
+    shading: EnumProperty(
+        name="Shading",
+        description="How the imported mesh is shaded",
+        items=[
+            ('FILE', "Normals From File", "Use the normals stored in the .mesh"),
+            ('ANGLE', "Smooth by Angle", "Smooth, hard edges above the angle"),
+            ('FLAT', "Flat", "Flat shading"),
+        ],
+        default='FILE',
+    )
+
+    angle: FloatProperty(
+        name="Angle",
+        subtype='ANGLE',
+        default=radians(30),
+        min=0.0,
+        max=radians(180),
     )
 
     shader_source: EnumProperty(
@@ -673,8 +689,14 @@ class IMPORT_OT_stormworks_mesh(Operator):
 
         layout.prop(
             self,
-            "use_file_normals"
+            "shading"
         )
+
+        if self.shading == 'ANGLE':
+            layout.prop(
+                self,
+                "angle"
+            )
 
     def execute(self, context):
 
@@ -732,7 +754,8 @@ class IMPORT_OT_stormworks_mesh(Operator):
                     filepath,
                     parsed,
                     self.shader_source,
-                    self.use_file_normals
+                    self.shading,
+                    self.angle
                 )
 
                 imported_objects.append(
