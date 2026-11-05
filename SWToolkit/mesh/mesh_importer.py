@@ -1,9 +1,19 @@
 import bpy
 import struct
 
+from mathutils import Vector
+
+from math import radians
 from pathlib import Path
-from bpy.props import StringProperty, EnumProperty
+from bpy.props import StringProperty, EnumProperty, FloatProperty
 from bpy.types import Operator
+
+
+def srgb_to_linear(c):
+    """Stormworks stores sRGB bytes; Blender FLOAT_COLOR attributes are linear."""
+    if c <= 0.04045:
+        return c / 12.92
+    return ((c + 0.055) / 1.055) ** 2.4
 
 
 class Reader:
@@ -87,9 +97,9 @@ def read_mesh(filepath):
         normal = r.read("3f")
 
         color = (
-            ((color_i >> 0) & 0xFF) / 255.0,
-            ((color_i >> 8) & 0xFF) / 255.0,
-            ((color_i >> 16) & 0xFF) / 255.0,
+            srgb_to_linear(((color_i >> 0) & 0xFF) / 255.0),
+            srgb_to_linear(((color_i >> 8) & 0xFF) / 255.0),
+            srgb_to_linear(((color_i >> 16) & 0xFF) / 255.0),
             ((color_i >> 24) & 0xFF) / 255.0,
         )
 
@@ -288,6 +298,20 @@ def shader_material(shader_id, name):
 
             shader.inputs["Roughness"].default_value = 0.5
 
+        if shader_kind != 3:
+
+            vcol = nodes.new("ShaderNodeVertexColor")
+            vcol.layer_name = "Col"
+
+            target = (
+                "Color" if shader_kind == 2 else "Base Color"
+            )
+
+            links.new(
+                vcol.outputs["Color"],
+                shader.inputs[target]
+            )
+
         links.new(
             shader.outputs[0],
             out.inputs["Surface"]
@@ -357,7 +381,9 @@ def create_shader_vertex_groups(obj, mesh, indices, submeshes):
 def create_object(
     filepath,
     mesh_data,
-    shader_source
+    shader_source,
+    shading='FILE',
+    angle=0.523599
 ):
 
     vertices = mesh_data["vertices"]
@@ -366,11 +392,12 @@ def create_object(
     indices = mesh_data["indices"]
     submeshes = mesh_data["submeshes"]
 
+    # The axis conversion mirrors the mesh, which flips the winding.
     faces = [
         (
             indices[i],
-            indices[i + 1],
-            indices[i + 2]
+            indices[i + 2],
+            indices[i + 1]
         )
         for i in range(
             0,
@@ -404,21 +431,40 @@ def create_object(
     # Custom Normals
     # --------------------------------------------------------
 
-    try:
+    if shading == 'FLAT':
 
-        mesh.normals_split_custom_set_from_vertices(
-            normals
-        )
+        from .fixImported import flat_shading
+        flat_shading(mesh)
 
-        mesh.use_auto_smooth = True
+    elif shading == 'ANGLE':
 
-    except Exception as exc:
+        from .fixImported import fix_shading
+        fix_shading(obj, mesh, angle)
 
-        print(
-            "Stormworks importer: "
-            "could not apply custom normals:",
-            exc
-        )
+    else:
+
+        try:
+
+            # Custom normals are ignored on flat (sharp) faces.
+            mesh.polygons.foreach_set(
+                "use_smooth",
+                [True] * len(mesh.polygons)
+            )
+
+            if hasattr(mesh, "use_auto_smooth"):
+                mesh.use_auto_smooth = True
+
+            mesh.normals_split_custom_set_from_vertices(
+                [Vector(n).normalized() for n in normals]
+            )
+
+        except Exception as exc:
+
+            print(
+                "Stormworks importer: "
+                "could not apply custom normals:",
+                exc
+            )
 
     # --------------------------------------------------------
     # Vertex Colors
@@ -551,6 +597,10 @@ def create_object(
             f"submesh_{i}_shader_id"
         ] = sm["shader_id"]
 
+    # Already created with the current colour/winding/normals handling.
+    obj["sw_import_fix"] = 1
+    mesh["sw_import_fix"] = 1
+
     return obj
 
 
@@ -573,6 +623,25 @@ class IMPORT_OT_stormworks_mesh(Operator):
     filter_glob: StringProperty(
         default="*.mesh",
         options={'HIDDEN'}
+    )
+
+    shading: EnumProperty(
+        name="Shading",
+        description="How the imported mesh is shaded",
+        items=[
+            ('FILE', "Normals From File", "Use the normals stored in the .mesh"),
+            ('ANGLE', "Smooth by Angle", "Smooth, hard edges above the angle"),
+            ('FLAT', "Flat", "Flat shading"),
+        ],
+        default='FILE',
+    )
+
+    angle: FloatProperty(
+        name="Angle",
+        subtype='ANGLE',
+        default=radians(30),
+        min=0.0,
+        max=radians(180),
     )
 
     shader_source: EnumProperty(
@@ -617,6 +686,17 @@ class IMPORT_OT_stormworks_mesh(Operator):
             self,
             "shader_source"
         )
+
+        layout.prop(
+            self,
+            "shading"
+        )
+
+        if self.shading == 'ANGLE':
+            layout.prop(
+                self,
+                "angle"
+            )
 
     def execute(self, context):
 
@@ -673,7 +753,9 @@ class IMPORT_OT_stormworks_mesh(Operator):
                 obj = create_object(
                     filepath,
                     parsed,
-                    self.shader_source
+                    self.shader_source,
+                    self.shading,
+                    self.angle
                 )
 
                 imported_objects.append(
@@ -720,6 +802,14 @@ class IMPORT_OT_stormworks_mesh(Operator):
         context.view_layer.objects.active = (
             imported_objects[-1]
         )
+
+        # Solid mode shows the material colour by default; show the
+        # imported vertex colours instead.
+        for area in context.screen.areas:
+            if area.type == 'VIEW_3D':
+                for space in area.spaces:
+                    if space.type == 'VIEW_3D' and space.shading.type == 'SOLID':
+                        space.shading.color_type = 'VERTEX'
 
         if failed_files:
 

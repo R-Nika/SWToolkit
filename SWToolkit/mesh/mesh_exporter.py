@@ -72,10 +72,19 @@ def color_for_loop(mesh, loop_index):
     return (1.0, 1.0, 1.0, 1.0)
 
 
+def linear_to_srgb(c):
+    c = max(0.0, min(1.0, c))
+    if c <= 0.0031308:
+        return c * 12.92
+    return 1.055 * (c ** (1.0 / 2.4)) - 0.055
+
+
 def pack_color(color):
     rgba = [
-        max(0, min(255, round(component * 255.0)))
-        for component in color
+        max(0, min(255, round(
+            (linear_to_srgb(component) if i < 3 else component) * 255.0
+        )))
+        for i, component in enumerate(color)
     ]
 
     return (
@@ -340,8 +349,8 @@ def build_mesh_data(obj, use_shaders, shader_source):
 
             triangle.append(vertex_index)
 
-        # Keep Blender's loop order.
-        group["indices"].extend(triangle)
+        # Undo the winding flip done by the importer's axis mirror.
+        group["indices"].extend(reversed(triangle))
 
     # ------------------------------------------------------------
     # VERTEX LIMIT
